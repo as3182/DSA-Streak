@@ -1,0 +1,75 @@
+<!--<!DOCTYPE html>-->
+<!--<html lang="en">-->
+<!--<head>-->
+<!--    <meta charset="UTF-8">-->
+<!--    <meta name="viewport" content="width=device-width, initial-scale=1.0">-->
+<!--    <title>Register</title>-->
+<!--    <style>-->
+<!--        /* Embedded CSS for styling */-->
+<!--        body {-->
+<!--            font-family: Arial, sans-serif;-->
+<!--            text-align: center;-->
+<!--            margin: 0;-->
+<!--            padding: 0;-->
+<!--        }-->
+<!--        form {-->
+<!--            margin-top: 50px;-->
+<!--        }-->
+<!--        input {-->
+<!--            padding: 10px;-->
+<!--            margin: 10px;-->
+<!--        }-->
+<!--        .btn {-->
+<!--            padding: 10px 20px;-->
+<!--            font-size: 16px;-->
+<!--            border: none;-->
+<!--            border-radius: 5px;-->
+<!--            background-color: #007bff;-->
+<!--            color: #fff;-->
+<!--            cursor: pointer;-->
+<!--        }-->
+<!--    </style>-->
+<!--</head>-->
+<!--<body>-->
+<!--<h1>Register</h1>-->
+<!--<form id="registerForm">-->
+<!--    <input type="text" id="userName" name="userName" placeholder="Username" required><br>-->
+<!--    <input type="password" id="password" name="password" placeholder="Password" required><br>-->
+<!--    <input type="text" id="name" name="name" placeholder="Name" required><br>-->
+<!--    <button type="button" onclick="registerUser()" class="btn">Register</button>-->
+<!--</form>-->
+<!--<script>-->
+<!--    function registerUser() {-->
+<!--    var userName = document.getElementById('userName').value;-->
+<!--    var password = document.getElementById('password').value;-->
+<!--    var name = document.getElementById('name').value;-->
+
+<!--    var formData = {-->
+<!--        userName: userName,-->
+<!--        password: password,-->
+<!--        name: name-->
+<!--    };-->
+
+<!--    fetch('/register', {-->
+<!--        method: 'POST',-->
+<!--        headers: {-->
+<!--            'Content-Type': 'application/json;charset=UTF-8'-->
+<!--        },-->
+<!--        body: JSON.stringify(formData)-->
+<!--    })-->
+<!--    .then(function(response) {-->
+<!--        if (!response.ok) {-->
+<!--            throw new Error('Registration failed');-->
+<!--        }-->
+<!--            window.alert('Registration successful! You will now be redirected to the login page.');-->
+<!--           window.location.href = '/login.html';-->
+<!--        // Redirect to a success page or do something else-->
+<!--    })-->
+<!--    .catch(function(error) {-->
+<!--        console.error('Error:', error);-->
+<!--        // Handle registration failure-->
+<!--    });-->
+<!--}-->
+<!--</script>-->
+<!--</body>-->
+<!--</html>-->
