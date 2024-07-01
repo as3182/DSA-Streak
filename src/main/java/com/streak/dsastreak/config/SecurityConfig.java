@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -27,19 +28,25 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 import java.io.IOException;
 
+import static org.springframework.security.config.Customizer.*;
+
 @Configuration
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
-    @Autowired
-    private JwtAuthenticationFilter filter;
-
-    @Autowired
-    private JwtAuthenticationEntryPoint point;
+//    @Autowired
+//    private JwtAuthenticationFilter filter;
+//
+//    @Autowired
+//    private JwtAuthenticationEntryPoint point;
 
     @Lazy
     @Autowired
     private UserDetailsService userDetailsService;
+
+
+    @Autowired
+    private CustomOAuth2UserService customOAuth2UserService;
 
     @Lazy
     @Autowired
@@ -50,15 +57,15 @@ public class SecurityConfig {
         return new CustomUserDetailService();
     }
 
-    @Bean
-    public AuthenticationSuccessHandler successHandler() {
-        return new SimpleUrlAuthenticationSuccessHandler() {
-            @Override
-            public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
-                // Do nothing upon successful authentication (no redirection)
-            }
-        };
-    }
+//    @Bean
+//    public AuthenticationSuccessHandler successHandler() {
+//        return new SimpleUrlAuthenticationSuccessHandler() {
+//            @Override
+//            public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
+//                // Do nothing upon successful authentication (no redirection)
+//            }
+//        };
+//    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -67,7 +74,7 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
+        return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors->cors.disable())
                 .authorizeHttpRequests(authz -> authz
@@ -76,12 +83,23 @@ public class SecurityConfig {
                         .requestMatchers("/home/register").permitAll()
                         .requestMatchers("/auth/login").permitAll()
                         .anyRequest().authenticated())
-                .exceptionHandling(ex->ex.authenticationEntryPoint(point))
-                .sessionManagement(session->session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+                        .oauth2Login(oauth2->oauth2
+                                .userInfoEndpoint(userinfo->userinfo
+                                        .userService(customOAuth2UserService))
+                                .successHandler(
+                                        (request, response, authentication) -> {
+                                            response.sendRedirect("/home/normal");
+                                        }
+                                ))
 
-        http.addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class);
+                        .formLogin(withDefaults())
+                        .build();
+//                .exceptionHandling(ex->ex.authenticationEntryPoint(point))
+//                .sessionManagement(s  ession->session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
-        return http.build();
+//        http.addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class);
+//
+//        return http.build();
     }
 
     @Autowired

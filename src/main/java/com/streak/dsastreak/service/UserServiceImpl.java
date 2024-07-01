@@ -10,10 +10,12 @@ import com.streak.dsastreak.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -36,24 +38,37 @@ public class UserServiceImpl implements UserService {
     private UserRepository userRepository;
     @Override
     public ResponseEntity<User> getUserInfo() {
-        String username =  getUsernameFromSecurityContext();
-        return new ResponseEntity<>(userRepository.findByUserName(username).orElseThrow(()->new RuntimeException("User Not Found")),HttpStatus.OK);
+
+        String username = getUsernameFromSecurityContext();
+        System.out.println(username + " : username");
+        User user = userRepository.findByUserName(username)
+                .orElseThrow(() -> new RuntimeException("User Not Found: " + username));
+        return new ResponseEntity<>(user, HttpStatus.OK);
     }
 
-    private String getUsernameFromSecurityContext()
-    {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if(principal instanceof UserDetails)
-        {
-            return ((UserDetails) principal).getUsername();
+    private String getUsernameFromSecurityContext() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication.getPrincipal() instanceof OAuth2User) {
+            OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
+            // Check for email or fallback to sub (unique identifier)
+            String email = oAuth2User.getAttribute("email");
+            if (email != null) {
+                return email;
+            } else {
+                String sub = oAuth2User.getAttribute("sub");
+                if (sub != null) {
+                    return sub;
+                }
+            }
+        } else if (authentication.getPrincipal() instanceof UserDetails) {
+            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+            return userDetails.getUsername();
+        } else {
+            throw new RuntimeException("Auth principal is not a recognized user");
         }
-
-        else
-        {
-            return principal.toString();
-        }
-
+        throw new RuntimeException("Cannot extract username from authentication principal");
     }
+
 
 
 //
