@@ -25,6 +25,9 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
 
 import java.io.IOException;
 
@@ -82,21 +85,19 @@ public class SecurityConfig {
                         .requestMatchers("/home/public").permitAll()
                         .requestMatchers("/home/register").permitAll()
                         .requestMatchers("/auth/login").permitAll()
+                        .requestMatchers("/oauth2/**").permitAll()
                         .anyRequest().authenticated())
                         .oauth2Login(oauth2->oauth2
                                 .userInfoEndpoint(userinfo->userinfo
                                         .userService(customOAuth2UserService))
-                                .successHandler(
-                                        (request, response, authentication) -> {
-                                            response.sendRedirect("/home/normal");
-                                        }
-                                ))
+                                .successHandler((request, response, authentication) -> {
+                                    response.sendRedirect("http://localhost:3000/home");
+                                }))
 
                         .formLogin(withDefaults())
                         .build();
 //                .exceptionHandling(ex->ex.authenticationEntryPoint(point))
-//                .sessionManagement(s  ession->session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
-
+//                .sessionManagement(session->session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 //        http.addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class);
 //
 //        return http.build();
@@ -135,8 +136,31 @@ public class SecurityConfig {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
+
 //    @Bean
 //    public AuthenticationProvider authenticationProvider() {
 //        DaoAuthenticationProvider daoAuthenticationProvider = new DaoAuthenticationProvider();
 //    }
+@Bean
+public CorsFilter corsFilter() {
+    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+    CorsConfiguration config = new CorsConfiguration();
+    config.setAllowCredentials(true);
+    config.addAllowedOrigin("http://localhost:3000");
+    config.addAllowedHeader("*");
+    config.addAllowedMethod("*");
+    source.registerCorsConfiguration("/**", config);
+    return new CorsFilter(source);
+}
+
+    private UrlBasedCorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowCredentials(true);
+        config.addAllowedOrigin("http://localhost:3000");
+        config.addAllowedHeader("*");
+        config.addAllowedMethod("*");
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
+    }
 }

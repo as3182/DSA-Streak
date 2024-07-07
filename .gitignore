@@ -31,3 +31,20 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Ignore IDE files
+.idea/
+.vscode
+
+# Ignore build directories
+target
+build
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# Ignore sensitive files
+application.properties
+.env
+
