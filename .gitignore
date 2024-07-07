@@ -48,3 +48,6 @@ Thumbs.db
 application.properties
 .env
 
+# Ignore application properties
+src/main/resources/application.properties
+
