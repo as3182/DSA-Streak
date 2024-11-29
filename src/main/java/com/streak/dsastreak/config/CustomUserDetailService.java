@@ -1,6 +1,4 @@
 package com.streak.dsastreak.config;
-//
-////import javax.management.relation.Role;
 import com.streak.dsastreak.entity.User;
 import com.streak.dsastreak.repository.UserRepository;
 ////import org.springframework.beans.factory.annotation.Autowired;
@@ -55,11 +53,7 @@ public class CustomUserDetailService implements UserDetailsService
     private UserRepository userRepository;
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        //load user from db by username
         User user = userRepository.findByUserName(username).orElseThrow(()-> new UsernameNotFoundException("NOT FOUND"));
         return user;
-
-
-
     }
 }

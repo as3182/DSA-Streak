@@ -26,6 +26,8 @@ public interface UserService {
 
     public List<LeaderBoardDTO> getLeaderboard();
 
+    public JwtResponse login(JwtRequest jwtRequest);
+
 
 //    public String addUser(UserRegisterDto userRegisterDto);
 //

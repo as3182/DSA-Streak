@@ -48,23 +48,7 @@ public class HomeController {
         return ResponseEntity.ok("Hi , i am a Admin User ");
     }
 
-    @PreAuthorize("permitAll()")
-    @GetMapping("/public")
-    public ResponseEntity<String> publicUser()
-    {
-        return ResponseEntity.ok("Hi , i am a Public User ");
-    }
 
-    @PreAuthorize("permitAll()")
-    @PostMapping("/register")
-    public ResponseEntity<String> addUser(@RequestBody UserRegisterDto userRegisterDto) {
-        String response = userService.addUser(userRegisterDto);
-        if (response.startsWith("User")) {
-            return new ResponseEntity<>(response, HttpStatus.CREATED); // 201 Created for successful registration
-        } else {
-            return new ResponseEntity<>(response, HttpStatus.ALREADY_REPORTED); // 400 Bad Request for existing User etc.
-        }
-    }
 
 
 

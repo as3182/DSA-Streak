@@ -1,127 +1,155 @@
 package com.streak.dsastreak.service;
 
-//import com.streak.dsastreak.entity.User;
-//import com.streak.dsastreak.entity.UserLoginDto;
-//import com.streak.dsastreak.entity.UserRegisterDto;
 
 import com.streak.dsastreak.entity.*;
 import com.streak.dsastreak.repository.RoleRepository;
 import com.streak.dsastreak.repository.UserRepository;
+import com.streak.dsastreak.security.JwtHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
-//
-//import java.util.Date;
-//
 @Service
 public class UserServiceImpl implements UserService {
+
+
+    private static final Logger logger = LoggerFactory.getLogger(UserServiceImpl.class);
 
     @Autowired
     private PasswordEncoder passwordEncoder;
     @Autowired
     private RoleRepository roleRepository;
 
+    @Autowired
+    private UserDetailsService userDetailService;
+
+    @Autowired
+    private JwtHelper jwtHelper;
 
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private AuthenticationManager authenticationManager;
+
+
     @Override
     public ResponseEntity<User> getUserInfo() {
-        String username =  getUsernameFromSecurityContext();
-        return new ResponseEntity<>(userRepository.findByUserName(username).orElseThrow(()->new RuntimeException("User Not Found")),HttpStatus.OK);
+
+        String username = getUsernameFromSecurityContext();
+        System.out.println(username + " : username");
+        User user = userRepository.findByUserName(username)
+                .orElseThrow(() -> new RuntimeException("User Not Found: " + username));
+        return new ResponseEntity<>(user, HttpStatus.OK);
+    }
+    private String getUsernameFromSecurityContext() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication != null && authentication.getPrincipal() instanceof UserDetails) {
+            return ((UserDetails) authentication.getPrincipal()).getUsername();
+        } else if (authentication != null && authentication.getPrincipal() instanceof String) {
+            return (String) authentication.getPrincipal();
+        } else {
+            throw new RuntimeException("User is not authenticated");
+        }
     }
 
-    private String getUsernameFromSecurityContext()
-    {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if(principal instanceof UserDetails)
-        {
-            return ((UserDetails) principal).getUsername();
-        }
 
-        else
-        {
-            return principal.toString();
+    private String extractUsernameFromToken(String token) {
+        try {
+            return jwtHelper.getUsernameFromToken(token);
+        } catch (Exception e) {
+            throw new RuntimeException("Invalid JWT token");
         }
-
     }
 
 
-//
-
-////    @Autowired
-////    private KeyGenerator keyGenerator;
-//    private KeyGenerator keyGenerator = new KeyGenerator();
-//
-//
-//        @Override
-//        public String generateToken(String username) {
-//            String secretKey = keyGenerator.generateKey();
-//            // Use a library like JJWT for secure token generation
-//            String jwtToken = Jwts.builder()
-//                    .setSubject(username)
-//                    .setIssuedAt(new Date())
-//                    .setExpiration(new Date(System.currentTimeMillis() + 3600000)) // 1 hour expiration
-//                    .signWith(SignatureAlgorithm.HS256, secretKey)
-//                    .compact();
-//            return jwtToken;
-//        }
-//
-//
-//
-//
-
-    //
-////    private String getSecretKeyFromEnvVar() {
-////        String secretKey = System.getenv("DSA_STREAK_SECRET_KEY");
-////        if (secretKey == null || secretKey.isEmpty()) {
-////            throw new RuntimeException("Missing environment variable DSA_STREAK_SECRET_KEY");
-////        }
-////        return secretKey;}
-//
     @Override
     public String addUser(UserRegisterDto userRegisterDto) {
-        if (userRepository.findByUserName(userRegisterDto.getUserName()).isPresent()) {
-            return "Already Existing User. Please Login!"; // Registration failed
+        String username = userRegisterDto.getUserName();
+
+        // Log the incoming registration request
+        logger.info("Attempting to register user with username: {}", username);
+
+        // Validate username format
+        if (!username.matches("^[a-zA-Z0-9._%+-]+@vrv(user|admin)$")) {
+            logger.error("Invalid username format for user: {}", username);
+            throw new IllegalArgumentException("Invalid username format. Must end with @vrvuser or @vrvadmin.");
+        }
+        logger.info("Username format is valid for: {}", username);
+
+        // Check for existing user
+        if (userRepository.findByUserName(username).isPresent()) {
+            logger.warn("User already exists with username: {}", username);
+            return "Already Existing User. Please Login!";
+        }
+        logger.info("No existing user found for username: {}", username);
+
+        logger.info("TRYING TO SET PW");
+        String encodedPassword = passwordEncoder.encode(userRegisterDto.getPassword());
+        logger.info("Encoded password for user {}: {}", username, encodedPassword);
+
+        User newUser = new User();
+        newUser.setUserName(username);
+        newUser.setPassword(encodedPassword);
+        newUser.setName(userRegisterDto.getName());
+
+        Set<Role> roles = new HashSet<>();
+
+        // Assign role based on username suffix
+        if (username.endsWith("@vrvuser")) {
+            Role userRole = roleRepository.findByName(ERole.ROLE_USER)
+                    .orElseThrow(() -> {
+                        logger.error("Role {} not found for user {}", ERole.ROLE_USER, username);
+                        return new RuntimeException("Role Not Found");
+                    });
+            roles.add(userRole);
+            logger.info("Assigned ROLE_USER to user: {}", username);
+        } else if (username.endsWith("@vrvadmin")) {
+            Role adminRole = roleRepository.findByName(ERole.ROLE_ADMIN)
+                    .orElseThrow(() -> {
+                        logger.error("Role {} not found for user {}", ERole.ROLE_ADMIN, username);
+                        return new RuntimeException("Role Not Found");
+                    });
+            roles.add(adminRole);
+            logger.info("Assigned ROLE_ADMIN to user: {}", username);
         }
 
-        else
-        {
-
-        BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
-        String encryptedPwd=bCryptPasswordEncoder.encode(userRegisterDto.getPassword());
-
-       User newUser = new User();
-       newUser.setUserName(userRegisterDto.getUserName());
-       newUser.setPassword(encryptedPwd);
-       newUser.setName(userRegisterDto.getName());
-
-        Role userRole = roleRepository.findByName(ERole.ROLE_USER).orElseThrow(()->new RuntimeException("Role Not Found"));
-        Set<Role> roles = new HashSet<>();
-        roles.add(userRole);
         newUser.setRoles(roles);
 
-        Streaks streaks = new Streaks();
-        streaks.setUser(newUser);
-        streaks.setDaysOfStreaks(0);
-        streaks.setNumberOfQsns(0);
-        streaks.setLastUpdated(LocalDate.now());
-        newUser.setStreaks(streaks);
+        // If user is a regular user, initialize streaks
+        if (username.endsWith("@vrvuser")) {
+            Streaks streaks = new Streaks();
+            streaks.setUser(newUser);
+            streaks.setDaysOfStreaks(0);
+            streaks.setNumberOfQsns(0);
+            streaks.setLastUpdated(LocalDate.now());
+            newUser.setStreaks(streaks);
+            logger.info("Initialized streaks for user: {}", username);
+        }
 
-
-
+        // Save the new user
         userRepository.save(newUser);
-        return "User Registered Successfully!"; }// Registration successful
+        logger.info("User registered successfully with username: {}", username);
+
+        return "User Registered Successfully!"; // Registration successful
     }
+
+
 
     @Override
     public List<User> getAllUserInfo() {
@@ -215,23 +243,30 @@ public class UserServiceImpl implements UserService {
         return leaderboard;
 
     }
-//
-//        @Override
-//        public String login(UserLoginDto userLoginDto) {
-//            User User = userRepo.findByUserName(userLoginDto.getUserName());
-//            BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
-//
-//            if (User != null && bCryptPasswordEncoder.matches(userLoginDto.getPassword(), User.getPassword())) {
-//                String token = generateToken(userLoginDto.getUserName());
-//
-//                return token;
-//            } else {
-//                return "Invalid Username or password";
-//            }
-//        }
+
+    public JwtResponse login(JwtRequest jwtRequest) {
+        String username = jwtRequest.getUsername();
+        String password = jwtRequest.getPassword();
+
+        doAuthenticate(username, password);
+
+        UserDetails userDetails = userDetailService.loadUserByUsername(username);
+
+        String token = jwtHelper.generateToken(userDetails);
+
+        return JwtResponse.builder()
+                .jwtToken(token)
+                .username(userDetails.getUsername())
+                .build();
     }
-//
-//
-//
-//
-//
+
+    private void doAuthenticate(String username, String password) {
+        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(username, password);
+        try {
+            authenticationManager.authenticate(authentication);
+        } catch (BadCredentialsException e) {
+            throw new BadCredentialsException("Invalid username or password");
+        }
+    }
+}
+

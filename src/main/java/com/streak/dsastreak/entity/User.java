@@ -26,7 +26,6 @@ public class User implements UserDetails {
     private String userName;
     private String password;
     private String name;
-//    private List<String> banks;
 
     @OneToOne(mappedBy = "user",cascade = CascadeType.ALL,fetch = FetchType.LAZY)
     @JsonManagedReference
